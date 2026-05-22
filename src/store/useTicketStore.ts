@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AppStep, Ticket, TicketItem, User } from '../types'
+import type { AppStep, OcrReceiptResult, Ticket, TicketItem, User } from '../types'
 import { calculateGrandTotal, calculateTicketSubtotal, roundCurrency } from '../utils/splitCalculator'
 
 const participantColors = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c', '#0891b2', '#4f46e5', '#be123c']
@@ -8,10 +8,13 @@ interface TicketState {
   currentStep: AppStep
   ticket: Ticket
   isProcessingReceipt: boolean
+  lastOcrResult?: OcrReceiptResult
   receiptPreviewUrl?: string
+  resetTicket: () => void
   setStep: (step: AppStep) => void
   setReceiptPreviewUrl: (url?: string) => void
   setIsProcessingReceipt: (isProcessing: boolean) => void
+  applyOcrResult: (result: OcrReceiptResult) => void
   replaceItems: (items: TicketItem[]) => void
   updateItem: (itemId: string, patch: Partial<TicketItem>) => void
   addItem: () => void
@@ -29,9 +32,28 @@ export const useTicketStore = create<TicketState>((set) => ({
   currentStep: 'upload',
   ticket: createInitialTicket(),
   isProcessingReceipt: false,
+  resetTicket: () =>
+    set({
+      currentStep: 'upload',
+      ticket: createInitialTicket(),
+      isProcessingReceipt: false,
+      lastOcrResult: undefined,
+      receiptPreviewUrl: undefined,
+    }),
   setStep: (step) => set({ currentStep: step }),
   setReceiptPreviewUrl: (url) => set({ receiptPreviewUrl: url }),
   setIsProcessingReceipt: (isProcessing) => set({ isProcessingReceipt: isProcessing }),
+  applyOcrResult: (result) =>
+    set((state) => ({
+      ticket: recalculateTicket({
+        ...state.ticket,
+        items: result.items.map(normalizeItem),
+        tax: result.tax ?? state.ticket.tax,
+        tip: result.tip ?? state.ticket.tip,
+      }),
+      lastOcrResult: result,
+      currentStep: 'review',
+    })),
   replaceItems: (items) =>
     set((state) => ({
       ticket: recalculateTicket({

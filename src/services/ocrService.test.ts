@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { MockOcrService, parseReceiptText } from './ocrService'
 
 describe('parseReceiptText', () => {
-  it('parses receipt-like lines into ticket items', () => {
-    const items = parseReceiptText(`
+  it('parses receipt-like lines into a structured result', () => {
+    const result = parseReceiptText(`
       2 Street Tacos        18.00
       Chicken Bowl          $14.50
       Tax                    2.60
@@ -11,7 +11,7 @@ describe('parseReceiptText', () => {
       Total                 41.10
     `)
 
-    expect(items).toEqual([
+    expect(result.items).toEqual([
       expect.objectContaining({
         name: 'Street Tacos',
         quantity: 2,
@@ -25,31 +25,35 @@ describe('parseReceiptText', () => {
         totalPrice: 14.5,
       }),
     ])
+    expect(result.rawText).toContain('Street Tacos')
+    expect(result.confidence).toBeGreaterThan(0)
   })
 
   it('ignores non-item totals and malformed lines', () => {
-    const items = parseReceiptText(`
+    const result = parseReceiptText(`
       SUBTOTAL 32.50
       BALANCE DUE 41.10
       paid by card
     `)
 
-    expect(items).toEqual([])
+    expect(result.items).toEqual([])
   })
 })
 
 describe('MockOcrService', () => {
-  it('returns structured ticket items for an image input contract', async () => {
+  it('returns a structured OCR result for an image input contract', async () => {
     const service = new MockOcrService()
 
-    const items = await service.processImage('mock://receipt.jpg')
+    const result = await service.processImage('mock://receipt.jpg')
 
-    expect(items.length).toBeGreaterThan(0)
-    expect(items[0]).toEqual(
+    expect(result.items.length).toBeGreaterThan(0)
+    expect(result.items[0]).toEqual(
       expect.objectContaining({
         id: expect.any(String),
         assignedUserIds: [],
       }),
     )
+    expect(result.provider).toBe('mock')
+    expect(result.preprocessingOperations).toEqual([])
   })
 })

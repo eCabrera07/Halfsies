@@ -1,29 +1,10 @@
-import type { TicketItem } from '../types'
+import { parseReceiptTextWithStrategies } from '../utils/receiptParsers'
+import type { OcrReceiptResult } from '../types'
+import { createNoopImagePreprocessor, type ImagePreprocessor } from './imagePreprocessor'
 
 export interface OcrService {
-  processImage(image: File | string): Promise<TicketItem[]>
+  processImage(image: File | string): Promise<OcrReceiptResult>
 }
-
-const nonItemKeywords = [
-  'amount due',
-  'balance',
-  'card',
-  'cash',
-  'change',
-  'credit',
-  'debit',
-  'discount',
-  'gratuity',
-  'mastercard',
-  'paid',
-  'payment',
-  'subtotal',
-  'suggested',
-  'tax',
-  'tip',
-  'total',
-  'visa',
-]
 
 const sampleReceiptText = `
   2 Birria Tacos           17.98
@@ -36,64 +17,48 @@ const sampleReceiptText = `
   Total                    49.58
 `
 
-export function parseReceiptText(rawText: string): TicketItem[] {
-  return rawText
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .flatMap((line, index) => parseReceiptLine(line, index))
-}
-
-function parseReceiptLine(line: string, index: number): TicketItem[] {
-  const lower = line.toLowerCase()
-  if (nonItemKeywords.some((keyword) => lower.includes(keyword))) {
-    return []
+export function parseReceiptText(
+  rawText: string,
+  options: { provider?: string; confidence?: number; preprocessingOperations?: string[] } = {},
+): OcrReceiptResult {
+  const parsed = parseReceiptTextWithStrategies(rawText)
+  return {
+    provider: options.provider ?? 'parser',
+    rawText,
+    items: parsed.items,
+    subtotal: parsed.subtotal,
+    tax: parsed.tax,
+    tip: parsed.tip,
+    grandTotal: parsed.grandTotal,
+    confidence: options.confidence ?? estimateConfidence(rawText, parsed.items.length),
+    warnings: parsed.warnings,
+    preprocessingOperations: options.preprocessingOperations ?? [],
   }
-
-  const priceMatch = line.match(/\$?\s*(-?\d+(?:\.\d{2}))\s*$/)
-  if (!priceMatch?.[1]) {
-    return []
-  }
-
-  const totalPrice = Number(priceMatch[1])
-  if (!Number.isFinite(totalPrice) || totalPrice <= 0) {
-    return []
-  }
-
-  const description = line.slice(0, priceMatch.index).trim()
-  const quantityMatch = description.match(/^(\d+(?:\.\d+)?)\s*[xX]?\s+(.+)$/)
-  const quantity = quantityMatch?.[1] ? Number(quantityMatch[1]) : 1
-  const name = (quantityMatch?.[2] ?? description).replace(/[#*]+/g, '').trim()
-
-  if (!name || !Number.isFinite(quantity) || quantity <= 0) {
-    return []
-  }
-
-  return [
-    {
-      id: createItemId(index, name),
-      name,
-      quantity,
-      pricePerUnit: roundToCurrency(totalPrice / quantity),
-      totalPrice: roundToCurrency(totalPrice),
-      assignedUserIds: [],
-    },
-  ]
-}
-
-function createItemId(index: number, name: string): string {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  return `item-${index + 1}-${slug || 'receipt-line'}`
-}
-
-function roundToCurrency(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
 export class MockOcrService implements OcrService {
-  async processImage(image: File | string): Promise<TicketItem[]> {
-    void image
-    await new Promise((resolve) => globalThis.setTimeout(resolve, 350))
-    return parseReceiptText(sampleReceiptText)
+  private readonly imagePreprocessor: ImagePreprocessor
+
+  constructor(imagePreprocessor: ImagePreprocessor = createNoopImagePreprocessor()) {
+    this.imagePreprocessor = imagePreprocessor
   }
+
+  async processImage(image: File | string): Promise<OcrReceiptResult> {
+    const preparedImage = await this.imagePreprocessor.prepareReceiptImage(image)
+    void preparedImage.image
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 350))
+    return parseReceiptText(sampleReceiptText, {
+      provider: 'mock',
+      confidence: 0.86,
+      preprocessingOperations: preparedImage.operations,
+    })
+  }
+}
+
+function estimateConfidence(rawText: string, itemCount: number): number {
+  if (!rawText.trim() || itemCount === 0) {
+    return 0
+  }
+
+  return 0.7
 }

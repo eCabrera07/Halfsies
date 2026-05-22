@@ -30,6 +30,19 @@ export interface Ticket {
   participants: User[]
 }
 
+export interface OcrReceiptResult {
+  provider: string
+  rawText: string
+  items: TicketItem[]
+  subtotal?: number
+  tax?: number
+  tip?: number
+  grandTotal?: number
+  confidence: number
+  warnings: string[]
+  preprocessingOperations: string[]
+}
+
 export interface ParticipantSplit {
   participantId: string
   participantName: string

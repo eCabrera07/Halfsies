@@ -35,8 +35,16 @@ Replace `MockOcrService` with a concrete implementation of the `OcrService` inte
 
 ```ts
 export interface OcrService {
-  processImage(image: File | string): Promise<TicketItem[]>
+  processImage(image: File | string): Promise<OcrReceiptResult>
 }
 ```
 
-That boundary can wrap Google Cloud Vision, Tesseract.js, a custom layout parser, or a server-side image pipeline without changing the React workflow.
+The current flow now preserves the full OCR result instead of only storing default demo items. A provider should return raw text, parsed items, totals, confidence, warnings, and preprocessing operations so the Review screen can expose scan quality to the host.
+
+The intended pipeline is:
+
+```text
+image upload -> image preprocessor -> OCR provider -> receipt parser -> host review -> split
+```
+
+`src/services/imagePreprocessor.ts` currently provides a no-op preprocessing contract. The real implementation should crop the receipt, deskew it, improve contrast, and pass the prepared image to Azure Document Intelligence, AWS Textract, Google Document AI, or another provider. The deterministic parsing lives in `src/utils/receiptParsers.ts` so provider output can be normalized and tested independently.

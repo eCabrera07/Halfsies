@@ -8,7 +8,7 @@ const ocrService = new MockOcrService()
 export function CameraUploadView() {
   const isProcessingReceipt = useTicketStore((state) => state.isProcessingReceipt)
   const receiptPreviewUrl = useTicketStore((state) => state.receiptPreviewUrl)
-  const replaceItems = useTicketStore((state) => state.replaceItems)
+  const applyOcrResult = useTicketStore((state) => state.applyOcrResult)
   const setIsProcessingReceipt = useTicketStore((state) => state.setIsProcessingReceipt)
   const setReceiptPreviewUrl = useTicketStore((state) => state.setReceiptPreviewUrl)
 
@@ -22,8 +22,8 @@ export function CameraUploadView() {
     setReceiptPreviewUrl(URL.createObjectURL(file))
 
     try {
-      const parsedItems = await ocrService.processImage(file)
-      replaceItems(parsedItems)
+      const ocrResult = await ocrService.processImage(file)
+      applyOcrResult(ocrResult)
     } finally {
       setIsProcessingReceipt(false)
     }

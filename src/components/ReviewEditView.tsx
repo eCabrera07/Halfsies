@@ -4,6 +4,7 @@ import { formatMoney } from '../utils/splitCalculator'
 
 export function ReviewEditView() {
   const ticket = useTicketStore((state) => state.ticket)
+  const lastOcrResult = useTicketStore((state) => state.lastOcrResult)
   const addItem = useTicketStore((state) => state.addItem)
   const removeItem = useTicketStore((state) => state.removeItem)
   const setStep = useTicketStore((state) => state.setStep)
@@ -22,6 +23,37 @@ export function ReviewEditView() {
           Add item
         </button>
       </div>
+
+      {lastOcrResult && (
+        <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm md:grid-cols-[0.8fr_1.2fr]">
+          <div className="space-y-2">
+            <p className="font-semibold text-slate-950">OCR review</p>
+            <p className="text-slate-600">Provider: {lastOcrResult.provider}</p>
+            <p className="text-slate-600">Confidence: {Math.round(lastOcrResult.confidence * 100)}%</p>
+            <p className="text-slate-600">
+              Preprocessing:{' '}
+              {lastOcrResult.preprocessingOperations.length > 0
+                ? lastOcrResult.preprocessingOperations.join(', ')
+                : 'none yet'}
+            </p>
+            {lastOcrResult.warnings.length > 0 && (
+              <ul className="space-y-1 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                {lastOcrResult.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <label className="space-y-2">
+            <span className="block font-semibold text-slate-950">Raw OCR text</span>
+            <textarea
+              className="min-h-36 w-full rounded-md border border-slate-300 bg-slate-50 p-3 font-mono text-xs text-slate-700"
+              readOnly
+              value={lastOcrResult.rawText.trim()}
+            />
+          </label>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="min-w-[720px] w-full text-left text-sm">
