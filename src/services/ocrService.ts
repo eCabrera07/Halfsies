@@ -4,7 +4,7 @@ import type { OcrReceiptResult } from '../types'
 import { createNoopImagePreprocessor, type ImagePreprocessor } from './imagePreprocessor'
 
 export interface OcrService {
-  processImage(image: File | string): Promise<OcrReceiptResult>
+  processImage(image: File | Blob | string): Promise<OcrReceiptResult>
 }
 
 const sampleReceiptText = `
@@ -44,7 +44,7 @@ export class TesseractOcrService implements OcrService {
     this.imagePreprocessor = imagePreprocessor
   }
 
-  async processImage(image: File | string): Promise<OcrReceiptResult> {
+  async processImage(image: File | Blob | string): Promise<OcrReceiptResult> {
     const preparedImage = await this.imagePreprocessor.prepareReceiptImage(image)
 
     const {
@@ -66,7 +66,7 @@ export class MockOcrService implements OcrService {
     this.imagePreprocessor = imagePreprocessor
   }
 
-  async processImage(image: File | string): Promise<OcrReceiptResult> {
+  async processImage(image: File | Blob | string): Promise<OcrReceiptResult> {
     const preparedImage = await this.imagePreprocessor.prepareReceiptImage(image)
     void preparedImage.image
     await new Promise((resolve) => globalThis.setTimeout(resolve, 350))

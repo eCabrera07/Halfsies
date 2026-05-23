@@ -25,7 +25,7 @@ interface BrowserReceiptImagePreprocessorOptions {
 }
 
 export interface ImagePreprocessor {
-  prepareReceiptImage(image: File | string): Promise<PreparedReceiptImage>
+  prepareReceiptImage(image: File | Blob | string): Promise<PreparedReceiptImage>
 }
 
 export function createNoopImagePreprocessor(): ImagePreprocessor {
@@ -90,7 +90,7 @@ export class BrowserReceiptImagePreprocessor implements ImagePreprocessor {
     this.threshold = options.threshold ?? 172
   }
 
-  async prepareReceiptImage(image: File | string): Promise<PreparedReceiptImage> {
+  async prepareReceiptImage(image: File | Blob | string): Promise<PreparedReceiptImage> {
     if (!isBrowserCanvasAvailable()) {
       return {
         image,
@@ -149,7 +149,7 @@ function isBrowserCanvasAvailable(): boolean {
   return typeof document !== 'undefined' && typeof Image !== 'undefined' && typeof Blob !== 'undefined'
 }
 
-async function loadImageSource(image: File | string): Promise<LoadedImageSource> {
+async function loadImageSource(image: File | Blob | string): Promise<LoadedImageSource> {
   const objectUrl = typeof image === 'string' ? undefined : URL.createObjectURL(image)
   const sourceUrl = typeof image === 'string' ? image : objectUrl
 

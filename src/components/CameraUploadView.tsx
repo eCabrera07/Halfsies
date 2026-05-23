@@ -1,5 +1,6 @@
-import { Camera, ImageUp } from 'lucide-react'
-import type { ChangeEvent } from 'react'
+import { Camera, ImageUp, ScanLine, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { createEnvironmentCameraConstraints, isCameraCaptureSupported, stopMediaStream } from '../services/cameraCapture'
 import { BrowserReceiptImagePreprocessor } from '../services/imagePreprocessor'
 import { TesseractOcrService } from '../services/ocrService'
 import { useTicketStore } from '../store/useTicketStore'
@@ -7,11 +8,52 @@ import { useTicketStore } from '../store/useTicketStore'
 const ocrService = new TesseractOcrService(new BrowserReceiptImagePreprocessor())
 
 export function CameraUploadView() {
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   const isProcessingReceipt = useTicketStore((state) => state.isProcessingReceipt)
   const receiptPreviewUrl = useTicketStore((state) => state.receiptPreviewUrl)
   const applyOcrResult = useTicketStore((state) => state.applyOcrResult)
   const setIsProcessingReceipt = useTicketStore((state) => state.setIsProcessingReceipt)
   const setReceiptPreviewUrl = useTicketStore((state) => state.setReceiptPreviewUrl)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !cameraStream) {
+      return
+    }
+
+    video.srcObject = cameraStream
+    const playResult = video.play?.()
+    if (playResult && typeof playResult.catch === 'function') {
+      void playResult.catch(() => {
+        setCameraError('Camera preview is available, but autoplay was blocked. Tap Capture photo after the preview appears.')
+      })
+    }
+  }, [cameraStream])
+
+  useEffect(() => () => stopMediaStream(cameraStream), [cameraStream])
+
+  async function startCamera() {
+    setCameraError(null)
+
+    if (!isCameraCaptureSupported()) {
+      setCameraError('Camera access is not available in this browser. Use Upload image instead.')
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(createEnvironmentCameraConstraints())
+      setCameraStream(stream)
+    } catch {
+      setCameraError('Camera permission was denied or no camera was found. Use Upload image instead.')
+    }
+  }
+
+  function stopCamera() {
+    stopMediaStream(cameraStream)
+    setCameraStream(null)
+  }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -30,6 +72,42 @@ export function CameraUploadView() {
     }
   }
 
+  async function processReceiptImage(image: File | Blob) {
+    setIsProcessingReceipt(true)
+
+    try {
+      const ocrResult = await ocrService.processImage(image)
+      applyOcrResult(ocrResult)
+    } finally {
+      setIsProcessingReceipt(false)
+    }
+  }
+
+  async function captureCameraPhoto() {
+    const video = videoRef.current
+    if (!video) {
+      return
+    }
+
+    const width = video.videoWidth || 1280
+    const height = video.videoHeight || 720
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const context = canvas.getContext('2d')
+    if (!context) {
+      setCameraError('Unable to capture a camera frame. Use Upload image instead.')
+      return
+    }
+
+    context.drawImage(video, 0, 0, width, height)
+    const blob = await canvasToBlob(canvas)
+    setReceiptPreviewUrl(URL.createObjectURL(blob))
+    stopCamera()
+    await processReceiptImage(blob)
+  }
+
   return (
     <section className="grid gap-6 md:grid-cols-[1.1fr_0.9fr] md:items-center">
       <div className="space-y-5">
@@ -38,28 +116,49 @@ export function CameraUploadView() {
           <h1 className="mt-2 text-4xl font-semibold text-text-main sm:text-5xl">Split the receipt while it is still warm</h1>
         </div>
 
-        <label className="flex cursor-pointer items-center justify-center gap-3 rounded-lg bg-slate-950 px-5 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500">
+        <button
+          className="flex items-center justify-center gap-3 rounded-lg bg-slate-950 px-5 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+          disabled={isProcessingReceipt}
+          onClick={startCamera}
+          type="button"
+        >
           <Camera aria-hidden="true" className="h-5 w-5" />
-          <span>{isProcessingReceipt ? 'Reading receipt...' : 'Capture receipt'}</span>
-          <input
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            disabled={isProcessingReceipt}
-            onChange={handleFileChange}
-            type="file"
-          />
-        </label>
+          <span>{cameraStream ? 'Camera active' : 'Capture receipt'}</span>
+        </button>
 
         <label className="flex cursor-pointer items-center justify-center gap-3 rounded-lg border border-border-muted bg-surface-muted px-5 py-4 text-base font-semibold text-text-main transition hover:border-slate-400 dark:hover:border-slate-500">
           <ImageUp aria-hidden="true" className="h-5 w-5" />
           <span>Upload image</span>
           <input accept="image/*" className="sr-only" disabled={isProcessingReceipt} onChange={handleFileChange} type="file" />
         </label>
+        {cameraError && <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{cameraError}</p>}
       </div>
 
       <div className="aspect-[4/5] overflow-hidden rounded-lg border border-border-muted bg-surface-muted shadow-sm">
-        {receiptPreviewUrl ? (
+        {cameraStream ? (
+          <div className="relative h-full w-full bg-black">
+            <video aria-label="Camera preview" className="h-full w-full object-cover" playsInline ref={videoRef} />
+            <div className="absolute inset-x-0 bottom-0 flex gap-2 bg-black/60 p-3">
+              <button
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-sm font-semibold text-slate-950"
+                disabled={isProcessingReceipt}
+                onClick={captureCameraPhoto}
+                type="button"
+              >
+                <ScanLine aria-hidden="true" className="h-4 w-4" />
+                Capture photo
+              </button>
+              <button
+                className="inline-flex items-center justify-center rounded-lg border border-white/40 px-3 py-3 text-white"
+                onClick={stopCamera}
+                title="Stop camera"
+                type="button"
+              >
+                <X aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : receiptPreviewUrl ? (
           <img alt="Receipt preview" className="h-full w-full object-cover" src={receiptPreviewUrl} />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 bg-[linear-gradient(135deg,var(--surface),var(--surface-muted))] p-6 text-center text-text-muted">
@@ -70,4 +169,17 @@ export function CameraUploadView() {
       </div>
     </section>
   )
+}
+
+async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Unable to capture receipt photo.'))
+        return
+      }
+
+      resolve(blob)
+    }, 'image/png')
+  })
 }
