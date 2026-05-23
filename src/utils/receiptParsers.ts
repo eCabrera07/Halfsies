@@ -62,7 +62,7 @@ export function parseReceiptTextWithStrategies(rawText: string): ParsedReceiptRe
 
     const nextLine = lines[index + 1]
     const itemLabel = isSkuLabel(label) && nextLine && !extractReceiptAmount(nextLine) ? nextLine : label
-    const item = parseItemLine(itemLabel, amount.value, index)
+    const item = parseItemLine(itemLabel, normalizeItemAmount(amount, line), index)
     if (item) {
       result.items.push(item)
     }
@@ -74,7 +74,7 @@ export function parseReceiptTextWithStrategies(rawText: string): ParsedReceiptRe
   return result
 }
 
-function extractReceiptAmount(line: string): { value: number; index: number } | null {
+function extractReceiptAmount(line: string): { value: number; index: number; endIndex: number; text: string } | null {
   const matches = Array.from(line.matchAll(/\$?\s*(-?\d+(?:,\d{3})*[.:]\d{1,2})(?!\d)/g))
   const match = matches.findLast((candidate) => candidate.index !== undefined && hasOnlyTrailingReceiptCode(line, candidate))
   if (!match?.[1] || match.index === undefined) {
@@ -89,7 +89,19 @@ function extractReceiptAmount(line: string): { value: number; index: number } | 
   return {
     value: roundCurrency(value),
     index: match.index,
+    endIndex: match.index + match[0].length,
+    text: match[1],
   }
+}
+
+function normalizeItemAmount(amount: { value: number; endIndex: number; text: string }, line: string): number {
+  const normalizedAmount = amount.text.replace(/,/g, '').replace(':', '.')
+  const truncatedNinesMatch = normalizedAmount.match(/^(-?\d+)\.9$/)
+  if (!truncatedNinesMatch || !hasExplicitTrailingReceiptCode(line, amount.endIndex)) {
+    return amount.value
+  }
+
+  return roundCurrency(Number(`${truncatedNinesMatch[1]}.99`))
 }
 
 function classifyReceiptField(label: string): ReceiptField | null {
@@ -151,12 +163,22 @@ function parseItemLine(label: string, totalPrice: number, index: number): Ticket
 
 function hasOnlyTrailingReceiptCode(line: string, match: RegExpMatchArray): boolean {
   const endIndex = (match.index ?? 0) + match[0].length
-  const trailing = line.slice(endIndex).replace(/[^\p{L}\p{N}\s]/gu, ' ').trim()
+  const trailing = getTrailingReceiptTokens(line, endIndex)
   if (!trailing) {
     return true
   }
 
-  return trailing.split(/\s+/).every((token) => token.length <= 3 || /^[a-z]\d[a-z]?$/i.test(token))
+  return trailing.every((token) => token.length <= 3 || /^[a-z]\d[a-z]?$/i.test(token))
+}
+
+function hasExplicitTrailingReceiptCode(line: string, endIndex: number): boolean {
+  const trailing = getTrailingReceiptTokens(line, endIndex)
+  return Boolean(trailing?.some((token) => /^(?:a?e|t\d?[a-z]?)$/i.test(token)))
+}
+
+function getTrailingReceiptTokens(line: string, endIndex: number): string[] | null {
+  const trailing = line.slice(endIndex).replace(/[^\p{L}\p{N}\s]/gu, ' ').trim()
+  return trailing ? trailing.split(/\s+/) : null
 }
 
 function isSkuLabel(label: string): boolean {

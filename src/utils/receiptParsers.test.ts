@@ -111,7 +111,7 @@ describe('parseReceiptTextWithStrategies', () => {
     `)
 
     expect(result.items).toEqual([
-      expect.objectContaining({ name: 'POLISH SAUSG', totalPrice: 17.9 }),
+      expect.objectContaining({ name: 'POLISH SAUSG', totalPrice: 17.99 }),
       expect.objectContaining({ name: 'KS ALMND BAR', totalPrice: 10.99 }),
       expect.objectContaining({ name: 'KS CHKN FILL', totalPrice: 13.98 }),
       expect.objectContaining({ name: 'MOZZ STIS', totalPrice: 16.19 }),
