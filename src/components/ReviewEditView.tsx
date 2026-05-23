@@ -1,4 +1,4 @@
-import { ArrowRight, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, Plus, Trash2, RotateCcw } from 'lucide-react'
 import { useTicketStore } from '../store/useTicketStore'
 import { formatMoney } from '../utils/splitCalculator'
 
@@ -8,6 +8,7 @@ export function ReviewEditView() {
   const addItem = useTicketStore((state) => state.addItem)
   const removeItem = useTicketStore((state) => state.removeItem)
   const setStep = useTicketStore((state) => state.setStep)
+  const resetTicket = useTicketStore((state) => state.resetTicket)
   const updateCharges = useTicketStore((state) => state.updateCharges)
   const updateItem = useTicketStore((state) => state.updateItem)
 
@@ -18,10 +19,20 @@ export function ReviewEditView() {
           <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Review</p>
           <h1 className="mt-1 text-3xl font-semibold text-slate-950">Receipt items</h1>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-950" onClick={addItem} type="button">
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          Add item
-        </button>
+        <div className="flex gap-2">
+          <button 
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50" 
+            onClick={resetTicket} 
+            type="button"
+          >
+            <RotateCcw aria-hidden="true" className="h-4 w-4" />
+            Re-upload receipt
+          </button>
+          <button className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-950 transition hover:bg-slate-50" onClick={addItem} type="button">
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            Add item
+          </button>
+        </div>
       </div>
 
       {lastOcrResult && (
