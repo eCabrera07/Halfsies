@@ -68,19 +68,20 @@ export function parseReceiptTextWithStrategies(rawText: string): ParsedReceiptRe
     }
   }
 
+  addItemSubtotalWarning(result)
   addReconciliationWarnings(result)
 
   return result
 }
 
 function extractReceiptAmount(line: string): { value: number; index: number } | null {
-  const matches = Array.from(line.matchAll(/\$?\s*(-?\d+(?:,\d{3})*(?:\.\d{2}))(?!\d)/g))
+  const matches = Array.from(line.matchAll(/\$?\s*(-?\d+(?:,\d{3})*[.:]\d{1,2})(?!\d)/g))
   const match = matches.findLast((candidate) => candidate.index !== undefined && hasOnlyTrailingReceiptCode(line, candidate))
   if (!match?.[1] || match.index === undefined) {
     return null
   }
 
-  const value = Number(match[1].replace(/,/g, ''))
+  const value = Number(match[1].replace(/,/g, '').replace(':', '.'))
   if (!Number.isFinite(value)) {
     return null
   }
@@ -169,11 +170,27 @@ function isSkuLabel(label: string): boolean {
 }
 
 function cleanItemName(label: string): string {
-  return label
+  const withoutReceiptPrefix = label
     .replace(/[#*]+/g, '')
     .replace(/^[Il|]\s+(?=[A-Z])/u, '')
+    .replace(/^\s*(?:CE|AE|E)\s*[-:[\]\\/|]*\s*/iu, '')
+    .replace(/^\s*\d{5,}\s+/, '')
     .replace(/\s+T[A-Z0-9]{0,3}$/iu, '')
     .trim()
+
+  return withoutReceiptPrefix.replace(/^[\s\p{P}\p{S}]+|[\s\p{P}\p{S}]+$/gu, '').trim()
+}
+
+function addItemSubtotalWarning(result: ParsedReceiptResult) {
+  if (result.subtotal === undefined || result.items.length === 0) {
+    return
+  }
+
+  const parsedItemSubtotal = roundCurrency(result.items.reduce((sum, item) => sum + item.totalPrice, 0))
+  const difference = roundCurrency(result.subtotal - parsedItemSubtotal)
+  if (Math.abs(difference) >= 0.01) {
+    result.warnings.push(`Parsed item totals differ from the receipt subtotal by ${formatMoney(Math.abs(difference))}.`)
+  }
 }
 
 function addReconciliationWarnings(result: ParsedReceiptResult) {

@@ -101,4 +101,29 @@ describe('parseReceiptTextWithStrategies', () => {
       expect.objectContaining({ name: 'ADD Crushed Oreo', quantity: 1, totalPrice: 0.35 }),
     ])
   })
+
+  it('parses warehouse receipt rows with leading tax codes, SKUs, and OCR punctuation', () => {
+    const result = parseReceiptTextWithStrategies(`
+      CE - POLISH SAUSG 17.9 E
+      E 1165912 KS ALMND BAR 10.99 E
+      E // 1782177 KS CHKN FILL, 13:98 E
+      E[ 222464 MOZZ STIS. 16.19 E
+    `)
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ name: 'POLISH SAUSG', totalPrice: 17.9 }),
+      expect.objectContaining({ name: 'KS ALMND BAR', totalPrice: 10.99 }),
+      expect.objectContaining({ name: 'KS CHKN FILL', totalPrice: 13.98 }),
+      expect.objectContaining({ name: 'MOZZ STIS', totalPrice: 16.19 }),
+    ])
+  })
+
+  it('warns when parsed item prices do not reconcile with the printed subtotal', () => {
+    const result = parseReceiptTextWithStrategies(`
+      E[ 222464 MOZZ STIS. 16.19 E
+      SUBTOTAL 16.79
+    `)
+
+    expect(result.warnings).toContain('Parsed item totals differ from the receipt subtotal by $0.60.')
+  })
 })
