@@ -1,9 +1,9 @@
 import { Camera, ImageUp } from 'lucide-react'
 import type { ChangeEvent } from 'react'
-import { MockOcrService } from '../services/ocrService'
+import { TesseractOcrService } from '../services/ocrService'
 import { useTicketStore } from '../store/useTicketStore'
 
-const ocrService = new MockOcrService()
+const ocrService = new TesseractOcrService()
 
 export function CameraUploadView() {
   const isProcessingReceipt = useTicketStore((state) => state.isProcessingReceipt)

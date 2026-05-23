@@ -1,3 +1,4 @@
+import Tesseract from 'tesseract.js'
 import { parseReceiptTextWithStrategies } from '../utils/receiptParsers'
 import type { OcrReceiptResult } from '../types'
 import { createNoopImagePreprocessor, type ImagePreprocessor } from './imagePreprocessor'
@@ -33,6 +34,29 @@ export function parseReceiptText(
     confidence: options.confidence ?? estimateConfidence(rawText, parsed.items.length),
     warnings: parsed.warnings,
     preprocessingOperations: options.preprocessingOperations ?? [],
+  }
+}
+
+export class TesseractOcrService implements OcrService {
+  private readonly imagePreprocessor: ImagePreprocessor
+
+  constructor(imagePreprocessor: ImagePreprocessor = createNoopImagePreprocessor()) {
+    this.imagePreprocessor = imagePreprocessor
+  }
+
+  async processImage(image: File | string): Promise<OcrReceiptResult> {
+    const preparedImage = await this.imagePreprocessor.prepareReceiptImage(image)
+    
+    const { data: { text, confidence } } = await Tesseract.recognize(
+      preparedImage.image,
+      'eng'
+    )
+
+    return parseReceiptText(text, {
+      provider: 'tesseract',
+      confidence: confidence / 100,
+      preprocessingOperations: preparedImage.operations,
+    })
   }
 }
 

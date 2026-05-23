@@ -1,5 +1,19 @@
-import { describe, expect, it } from 'vitest'
-import { MockOcrService, parseReceiptText } from './ocrService'
+import { describe, expect, it, vi } from 'vitest'
+import { MockOcrService, parseReceiptText, TesseractOcrService } from './ocrService'
+import Tesseract from 'tesseract.js'
+
+vi.mock('tesseract.js', () => ({
+  default: {
+    recognize: vi.fn(() =>
+      Promise.resolve({
+        data: {
+          text: '2 Street Tacos 18.00',
+          confidence: 90,
+        },
+      }),
+    ),
+  },
+}))
 
 describe('parseReceiptText', () => {
   it('parses receipt-like lines into a structured result', () => {
@@ -55,5 +69,17 @@ describe('MockOcrService', () => {
     )
     expect(result.provider).toBe('mock')
     expect(result.preprocessingOperations).toEqual([])
+  })
+})
+
+describe('TesseractOcrService', () => {
+  it('calls Tesseract and parses the result', async () => {
+    const service = new TesseractOcrService()
+    const result = await service.processImage('test-image.jpg')
+
+    expect(Tesseract.recognize).toHaveBeenCalledWith('test-image.jpg', 'eng')
+    expect(result.provider).toBe('tesseract')
+    expect(result.items[0].name).toBe('Street Tacos')
+    expect(result.confidence).toBe(0.9)
   })
 })
