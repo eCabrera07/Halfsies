@@ -46,11 +46,10 @@ export class TesseractOcrService implements OcrService {
 
   async processImage(image: File | string): Promise<OcrReceiptResult> {
     const preparedImage = await this.imagePreprocessor.prepareReceiptImage(image)
-    
-    const { data: { text, confidence } } = await Tesseract.recognize(
-      preparedImage.image,
-      'eng'
-    )
+
+    const {
+      data: { text, confidence },
+    } = await Tesseract.recognize(preparedImage.image, 'eng')
 
     return parseReceiptText(text, {
       provider: 'tesseract',

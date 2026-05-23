@@ -1,9 +1,10 @@
 import { Camera, ImageUp } from 'lucide-react'
 import type { ChangeEvent } from 'react'
+import { BrowserReceiptImagePreprocessor } from '../services/imagePreprocessor'
 import { TesseractOcrService } from '../services/ocrService'
 import { useTicketStore } from '../store/useTicketStore'
 
-const ocrService = new TesseractOcrService()
+const ocrService = new TesseractOcrService(new BrowserReceiptImagePreprocessor())
 
 export function CameraUploadView() {
   const isProcessingReceipt = useTicketStore((state) => state.isProcessingReceipt)
