@@ -16,19 +16,19 @@ export function ReviewEditView() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Review</p>
-          <h1 className="mt-1 text-3xl font-semibold text-slate-950">Receipt items</h1>
+          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-500">Review</p>
+          <h1 className="mt-1 text-3xl font-semibold text-text-main">Receipt items</h1>
         </div>
         <div className="flex gap-2">
           <button 
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50" 
+            className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-muted px-4 py-2 font-semibold text-text-muted transition hover:border-slate-400 hover:text-text-main" 
             onClick={resetTicket} 
             type="button"
           >
             <RotateCcw aria-hidden="true" className="h-4 w-4" />
             Re-upload receipt
           </button>
-          <button className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-950 transition hover:bg-slate-50" onClick={addItem} type="button">
+          <button className="inline-flex items-center gap-2 rounded-lg border border-border-muted bg-surface-muted px-4 py-2 font-semibold text-text-main transition hover:border-slate-400" onClick={addItem} type="button">
             <Plus aria-hidden="true" className="h-4 w-4" />
             Add item
           </button>
@@ -36,19 +36,19 @@ export function ReviewEditView() {
       </div>
 
       {lastOcrResult && (
-        <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm md:grid-cols-[0.8fr_1.2fr]">
+        <div className="grid gap-3 rounded-lg border border-border-muted bg-surface-muted p-4 text-sm md:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-2">
-            <p className="font-semibold text-slate-950">OCR review</p>
-            <p className="text-slate-600">Provider: {lastOcrResult.provider}</p>
-            <p className="text-slate-600">Confidence: {Math.round(lastOcrResult.confidence * 100)}%</p>
-            <p className="text-slate-600">
+            <p className="font-semibold text-text-main">OCR review</p>
+            <p className="text-text-muted">Provider: {lastOcrResult.provider}</p>
+            <p className="text-text-muted">Confidence: {Math.round(lastOcrResult.confidence * 100)}%</p>
+            <p className="text-text-muted">
               Preprocessing:{' '}
               {lastOcrResult.preprocessingOperations.length > 0
                 ? lastOcrResult.preprocessingOperations.join(', ')
                 : 'none yet'}
             </p>
             {lastOcrResult.warnings.length > 0 && (
-              <ul className="space-y-1 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">
+              <ul className="space-y-1 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200">
                 {lastOcrResult.warnings.map((warning) => (
                   <li key={warning}>{warning}</li>
                 ))}
@@ -56,9 +56,9 @@ export function ReviewEditView() {
             )}
           </div>
           <label className="space-y-2">
-            <span className="block font-semibold text-slate-950">Raw OCR text</span>
+            <span className="block font-semibold text-text-main">Raw OCR text</span>
             <textarea
-              className="min-h-36 w-full rounded-md border border-slate-300 bg-slate-50 p-3 font-mono text-xs text-slate-700"
+              className="min-h-36 w-full rounded-md border border-border-muted bg-surface p-3 font-mono text-xs text-text-main"
               readOnly
               value={lastOcrResult.rawText.trim()}
             />
@@ -66,9 +66,9 @@ export function ReviewEditView() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-border-muted bg-surface-muted">
         <table className="min-w-[720px] w-full text-left text-sm">
-          <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
+          <thead className="bg-surface text-xs uppercase tracking-wide text-text-muted">
             <tr>
               <th className="px-3 py-3">Item</th>
               <th className="px-3 py-3">Qty</th>
@@ -77,19 +77,19 @@ export function ReviewEditView() {
               <th className="px-3 py-3 text-right">Remove</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border-muted">
             {ticket.items.map((item) => (
               <tr key={item.id}>
                 <td className="px-3 py-3">
                   <input
-                    className="w-full rounded-md border border-slate-300 px-3 py-2"
+                    className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none"
                     onChange={(event) => updateItem(item.id, { name: event.target.value })}
                     value={item.name}
                   />
                 </td>
                 <td className="px-3 py-3">
                   <input
-                    className="w-20 rounded-md border border-slate-300 px-3 py-2"
+                    className="w-20 rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none"
                     min="0.01"
                     onChange={(event) => updateItem(item.id, { quantity: Number(event.target.value) })}
                     step="1"
@@ -99,7 +99,7 @@ export function ReviewEditView() {
                 </td>
                 <td className="px-3 py-3">
                   <input
-                    className="w-28 rounded-md border border-slate-300 px-3 py-2"
+                    className="w-28 rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none"
                     min="0"
                     onChange={(event) => updateItem(item.id, { pricePerUnit: Number(event.target.value) })}
                     step="0.01"
@@ -107,9 +107,9 @@ export function ReviewEditView() {
                     value={item.pricePerUnit}
                   />
                 </td>
-                <td className="px-3 py-3 font-semibold text-slate-950">{formatMoney(item.totalPrice)}</td>
+                <td className="px-3 py-3 font-semibold text-text-main">{formatMoney(item.totalPrice)}</td>
                 <td className="px-3 py-3 text-right">
-                  <button className="rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-700" onClick={() => removeItem(item.id)} title="Remove item" type="button">
+                  <button className="rounded-lg p-2 text-text-muted hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-900/20 dark:hover:text-rose-400" onClick={() => removeItem(item.id)} title="Remove item" type="button">
                     <Trash2 aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </td>
@@ -120,23 +120,23 @@ export function ReviewEditView() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="space-y-1 text-sm font-medium text-slate-700">
+        <label className="space-y-1 text-sm font-medium text-text-muted">
           <span>Subtotal</span>
-          <input className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2" readOnly value={formatMoney(ticket.subtotal)} />
+          <input className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main opacity-70" readOnly value={formatMoney(ticket.subtotal)} />
         </label>
-        <label className="space-y-1 text-sm font-medium text-slate-700">
+        <label className="space-y-1 text-sm font-medium text-text-muted">
           <span>Tax</span>
-          <input className="w-full rounded-md border border-slate-300 px-3 py-2" min="0" onChange={(event) => updateCharges({ tax: Number(event.target.value) })} step="0.01" type="number" value={ticket.tax} />
+          <input className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none" min="0" onChange={(event) => updateCharges({ tax: Number(event.target.value) })} step="0.01" type="number" value={ticket.tax} />
         </label>
-        <label className="space-y-1 text-sm font-medium text-slate-700">
+        <label className="space-y-1 text-sm font-medium text-text-muted">
           <span>Tip</span>
-          <input className="w-full rounded-md border border-slate-300 px-3 py-2" min="0" onChange={(event) => updateCharges({ tip: Number(event.target.value) })} step="0.01" type="number" value={ticket.tip} />
+          <input className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none" min="0" onChange={(event) => updateCharges({ tip: Number(event.target.value) })} step="0.01" type="number" value={ticket.tip} />
         </label>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <p className="font-semibold text-slate-950">Grand total {formatMoney(ticket.grandTotal)}</p>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-3 font-semibold text-white" onClick={() => setStep('assign')} type="button">
+      <div className="flex items-center justify-between gap-3 border-t border-border-muted pt-4">
+        <p className="font-semibold text-text-main">Grand total {formatMoney(ticket.grandTotal)}</p>
+        <button className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-3 font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500" onClick={() => setStep('assign')} type="button">
           Assign
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </button>

@@ -22,7 +22,11 @@ export function ProgressSteps({ currentStep }: ProgressStepsProps) {
 
         return (
           <div
-            className={`h-2 rounded-full ${isActive || isComplete ? 'bg-slate-950' : 'bg-slate-200'}`}
+            className={`h-2 rounded-full transition-colors ${
+              isActive || isComplete 
+                ? 'bg-emerald-600 dark:bg-emerald-500' 
+                : 'bg-border-muted'
+            }`}
             key={step.id}
             title={step.label}
           />
