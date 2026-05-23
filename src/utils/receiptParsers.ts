@@ -17,12 +17,17 @@ const ignoredLabels = [
   'balance',
   'card',
   'cash',
+  'cashless',
   'change',
+  'certificate',
+  'comp value',
   'credit',
   'debit',
+  'invoice',
   'mastercard',
   'paid',
   'payment',
+  'reference',
   'visa',
 ]
 
@@ -37,36 +42,40 @@ export function parseReceiptTextWithStrategies(rawText: string): ParsedReceiptRe
     warnings: [],
   }
 
-  lines.forEach((line, index) => {
-    const amount = extractTrailingAmount(line)
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    const amount = extractReceiptAmount(line)
     if (!amount) {
-      return
+      continue
     }
 
     const label = line.slice(0, amount.index).trim()
     const field = classifyReceiptField(label)
     if (field) {
       result[field] = amount.value
-      return
+      continue
     }
 
     if (shouldIgnoreLine(label)) {
-      return
+      continue
     }
 
-    const item = parseItemLine(label, amount.value, index)
+    const nextLine = lines[index + 1]
+    const itemLabel = isSkuLabel(label) && nextLine && !extractReceiptAmount(nextLine) ? nextLine : label
+    const item = parseItemLine(itemLabel, amount.value, index)
     if (item) {
       result.items.push(item)
     }
-  })
+  }
 
   addReconciliationWarnings(result)
 
   return result
 }
 
-function extractTrailingAmount(line: string): { value: number; index: number } | null {
-  const match = line.match(/\$?\s*(-?\d+(?:,\d{3})*(?:\.\d{2}))\s*$/)
+function extractReceiptAmount(line: string): { value: number; index: number } | null {
+  const matches = Array.from(line.matchAll(/\$?\s*(-?\d+(?:,\d{3})*(?:\.\d{2}))(?!\d)/g))
+  const match = matches.findLast((candidate) => candidate.index !== undefined && hasOnlyTrailingReceiptCode(line, candidate))
   if (!match?.[1] || match.index === undefined) {
     return null
   }
@@ -89,7 +98,7 @@ function classifyReceiptField(label: string): ReceiptField | null {
     return 'subtotal'
   }
 
-  if (normalized.includes('tax')) {
+  if (normalized.includes('tax') || normalized === 'gov' || normalized === 'mun' || normalized.startsWith('gov ') || normalized.startsWith('mun ')) {
     return 'tax'
   }
 
@@ -97,7 +106,12 @@ function classifyReceiptField(label: string): ReceiptField | null {
     return 'tip'
   }
 
-  if (normalized === 'total' || normalized.includes('grand total') || normalized.includes('amount due')) {
+  if (
+    normalized === 'total' ||
+    normalized.endsWith(' total') ||
+    normalized.includes('grand total') ||
+    normalized.includes('amount due')
+  ) {
     return 'grandTotal'
   }
 
@@ -114,10 +128,11 @@ function parseItemLine(label: string, totalPrice: number, index: number): Ticket
     return null
   }
 
-  const prefixMatch = label.match(/^(\d+(?:\.\d+)?)\s*[xX]?\s+(.+)$/)
-  const suffixMatch = label.match(/^(.+?)\s+[xX]\s*(\d+(?:\.\d+)?)$/)
+  const cleanedLabel = label.replace(/\s+/g, ' ').trim()
+  const prefixMatch = cleanedLabel.match(/^(\d+(?:\.\d+)?)\s*[xX]?\s+(.+)$/)
+  const suffixMatch = cleanedLabel.match(/^(.+?)\s+[xX]\s*(\d+(?:\.\d+)?)$/)
   const quantity = prefixMatch?.[1] ? Number(prefixMatch[1]) : suffixMatch?.[2] ? Number(suffixMatch[2]) : 1
-  const name = (prefixMatch?.[2] ?? suffixMatch?.[1] ?? label).replace(/[#*]+/g, '').trim()
+  const name = cleanItemName(prefixMatch?.[2] ?? suffixMatch?.[1] ?? cleanedLabel)
 
   if (!name || !Number.isFinite(quantity) || quantity <= 0) {
     return null
@@ -131,6 +146,34 @@ function parseItemLine(label: string, totalPrice: number, index: number): Ticket
     totalPrice: roundCurrency(totalPrice),
     assignedUserIds: [],
   }
+}
+
+function hasOnlyTrailingReceiptCode(line: string, match: RegExpMatchArray): boolean {
+  const endIndex = (match.index ?? 0) + match[0].length
+  const trailing = line.slice(endIndex).replace(/[^\p{L}\p{N}\s]/gu, ' ').trim()
+  if (!trailing) {
+    return true
+  }
+
+  return trailing.split(/\s+/).every((token) => token.length <= 3 || /^[a-z]\d[a-z]?$/i.test(token))
+}
+
+function isSkuLabel(label: string): boolean {
+  const normalized = label.replace(/[^a-z0-9]+/gi, ' ').trim()
+  if (!normalized) {
+    return false
+  }
+
+  const tokens = normalized.split(/\s+/)
+  return tokens.length <= 3 && tokens.some((token) => /^\d{5,}$/.test(token)) && tokens.some((token) => /\d/.test(token))
+}
+
+function cleanItemName(label: string): string {
+  return label
+    .replace(/[#*]+/g, '')
+    .replace(/^[Il|]\s+(?=[A-Z])/u, '')
+    .replace(/\s+T[A-Z0-9]{0,3}$/iu, '')
+    .trim()
 }
 
 function addReconciliationWarnings(result: ParsedReceiptResult) {

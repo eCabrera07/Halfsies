@@ -43,4 +43,62 @@ describe('parseReceiptTextWithStrategies', () => {
     expect(result.items).toHaveLength(1)
     expect(result.items[0].name).toBe('Pizza')
   })
+
+  it('uses the following product line when a SKU line carries the price', () => {
+    const result = parseReceiptTextWithStrategies(`
+      6617575 D42798000 0.49
+      MTG TARKIR DRAGONSTORM PLAY B
+      5.49 Comp. Value
+      5.00- My Best Buy Certificate
+      Sales Tax 0.06
+      Reduced State Tax 0.00
+      Municipal Tax 0.00
+    `)
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        name: 'MTG TARKIR DRAGONSTORM PLAY B',
+        quantity: 1,
+        totalPrice: 0.49,
+      }),
+    ])
+  })
+
+  it('keeps receipt item rows while dropping discounts, tax, and payment clutter from OCR text', () => {
+    const result = parseReceiptTextWithStrategies(`
+      STARBURST CHERRY Ta $1.99 T2F
+      CRYSTAL LIGHT GO GRAPE $2.50 T2F
+      5.00- My Best Buy Certificate
+      GOV [$7.09] $0.74
+      TOTAL $14.96
+      Visa $14.96
+      Balance $0.00
+    `)
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ name: 'STARBURST CHERRY', totalPrice: 1.99 }),
+      expect.objectContaining({ name: 'CRYSTAL LIGHT GO GRAPE', totalPrice: 2.5 }),
+    ])
+    expect(result.grandTotal).toBe(14.96)
+  })
+
+  it('normalizes common OCR quantity mistakes on fast-food lines', () => {
+    const result = parseReceiptTextWithStrategies(`
+      I Big Mac Meal 9.89
+      I Big Mac
+      I M Mocha Frappe 2.90
+      ADD Crushed Oreo 0.35 Ee
+      Subtotal 13.14
+      Tax 0.86
+      Take-Out Total 14.00
+      Cashless 14.00
+      Change 0.00
+    `)
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ name: 'Big Mac Meal', quantity: 1, totalPrice: 9.89 }),
+      expect.objectContaining({ name: 'M Mocha Frappe', quantity: 1, totalPrice: 2.9 }),
+      expect.objectContaining({ name: 'ADD Crushed Oreo', quantity: 1, totalPrice: 0.35 }),
+    ])
+  })
 })
