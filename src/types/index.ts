@@ -2,6 +2,24 @@ export type PaymentStatus = 'pending' | 'paid'
 
 export type AppStep = 'upload' | 'review' | 'assign' | 'summary'
 
+export type ParticipantRole = 'host' | 'guest'
+
+export interface AuthUser {
+  id: string
+  email: string
+  displayName: string
+  avatarUrl?: string
+}
+
+export interface TicketSession {
+  id: string
+  ticketId: string
+  hostId: string
+  inviteCode: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface User {
   id: string
   name: string

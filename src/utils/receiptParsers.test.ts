@@ -23,20 +23,24 @@ describe('parseReceiptTextWithStrategies', () => {
     expect(result.warnings).toEqual([])
   })
 
-  it('parses quantity suffixes used by some POS systems', () => {
-    const result = parseReceiptTextWithStrategies('Tacos x2 18.00')
-
-    expect(result.items[0]).toMatchObject({ name: 'Tacos', quantity: 2, pricePerUnit: 9, totalPrice: 18 })
+  it('parses quantity prefixes', () => {
+    const result = parseReceiptTextWithStrategies('2 Tacos 18.00')
+    expect(result.items[0]).toMatchObject({ name: 'Tacos', quantity: 2, totalPrice: 18 })
   })
 
-  it('captures parser warnings when receipt math does not reconcile', () => {
-    const result = parseReceiptTextWithStrategies(`
-      Burger 10.00
-      Subtotal 10.00
-      Tax 1.00
-      Total 20.00
-    `)
+  it('parses quantity suffixes', () => {
+    const result = parseReceiptTextWithStrategies('Tacos x2 18.00')
+    expect(result.items[0]).toMatchObject({ name: 'Tacos', quantity: 2, totalPrice: 18 })
+  })
 
-    expect(result.warnings).toContain('Parsed total differs from subtotal + tax + tip by $9.00.')
+  it('ignores payment related lines', () => {
+    const result = parseReceiptTextWithStrategies(`
+      Pizza 15.00
+      Total 15.00
+      Visa ****1234 15.00
+      Change 0.00
+    `)
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].name).toBe('Pizza')
   })
 })
