@@ -6,6 +6,8 @@ import { TesseractOcrService } from '../services/ocrService'
 import { useTicketStore } from '../store/useTicketStore'
 
 const ocrService = new TesseractOcrService(new BrowserReceiptImagePreprocessor())
+const receiptActionBaseClassName =
+  'flex min-h-14 w-full items-center justify-center gap-3 rounded-lg border px-5 py-4 text-base font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60'
 
 export function CameraUploadView() {
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -117,7 +119,7 @@ export function CameraUploadView() {
         </div>
 
         <button
-          className="flex items-center justify-center gap-3 rounded-lg bg-slate-950 px-5 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+          className={`${receiptActionBaseClassName} border-transparent bg-slate-950 text-white hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500`}
           disabled={isProcessingReceipt}
           onClick={startCamera}
           type="button"
@@ -126,7 +128,9 @@ export function CameraUploadView() {
           <span>{cameraStream ? 'Camera active' : 'Capture receipt'}</span>
         </button>
 
-        <label className="flex cursor-pointer items-center justify-center gap-3 rounded-lg border border-border-muted bg-surface-muted px-5 py-4 text-base font-semibold text-text-main transition hover:border-slate-400 dark:hover:border-slate-500">
+        <label
+          className={`${receiptActionBaseClassName} cursor-pointer border-border-muted bg-surface-muted text-text-main hover:border-slate-400 dark:hover:border-slate-500`}
+        >
           <ImageUp aria-hidden="true" className="h-5 w-5" />
           <span>Upload image</span>
           <input accept="image/*" className="sr-only" disabled={isProcessingReceipt} onChange={handleFileChange} type="file" />
@@ -140,7 +144,7 @@ export function CameraUploadView() {
             <video aria-label="Camera preview" className="h-full w-full object-cover" playsInline ref={videoRef} />
             <div className="absolute inset-x-0 bottom-0 flex gap-2 bg-black/60 p-3">
               <button
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-sm font-semibold text-slate-950"
+                className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-border-muted bg-surface-muted px-3 py-3 text-sm font-semibold text-text-main shadow-sm transition hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isProcessingReceipt}
                 onClick={captureCameraPhoto}
                 type="button"
@@ -149,7 +153,7 @@ export function CameraUploadView() {
                 Capture photo
               </button>
               <button
-                className="inline-flex items-center justify-center rounded-lg border border-white/40 px-3 py-3 text-white"
+                className="inline-flex min-h-12 w-12 items-center justify-center rounded-lg border border-white/40 bg-black/30 px-3 py-3 text-white transition hover:bg-black/50"
                 onClick={stopCamera}
                 title="Stop camera"
                 type="button"
