@@ -262,7 +262,9 @@ git commit -m "docs: mark Android smoke test as verified"
 
 ---
 
-## Phase 2: Google Play Internal Testing
+## Phase 3: Google Play Internal Testing
+
+> **Note:** Phase 2 is a full native Kotlin / Jetpack Compose rewrite in a separate repo. Phase 3 (this section) comes after that — publish whichever version (Capacitor or native) is ready first.
 
 **Goal:** Publish Halfsies to the Google Play Store on the Internal Testing track so up to 100 specific people can install it directly from the Play Store.
 
@@ -274,7 +276,7 @@ git commit -m "docs: mark Android smoke test as verified"
 
 ---
 
-### Task 6: Generate the release signing keystore
+### Task 6 (Phase 3): Generate the release signing keystore
 
 **Files:**
 - Create: `android/keystore/halfsies-release.jks` (not committed — add to .gitignore)
@@ -361,7 +363,7 @@ git commit -m "feat: wire release signing config into Android Gradle build"
 
 ---
 
-### Task 7: Generate Android icon assets from the existing SVG
+### Task 7 (Phase 3): Generate Android icon assets from the existing SVG
 
 **Files:**
 - Modify: `android/app/src/main/res/` — replace default Capacitor icons with Halfsies branding
@@ -431,7 +433,7 @@ git commit -m "feat: generate Android icon assets from favicon SVG"
 
 ---
 
-### Task 8: Build the release AAB and publish to Internal Testing
+### Task 8 (Phase 3): Build the release AAB and publish to Internal Testing
 
 **Files:**
 - No source changes — this task produces the AAB and sets up Play Console.
