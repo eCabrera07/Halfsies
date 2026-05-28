@@ -259,3 +259,227 @@ Update `docs/superpowers/specs/2026-05-27-android-capacitor-design.md` — chang
 git add docs/superpowers/specs/2026-05-27-android-capacitor-design.md
 git commit -m "docs: mark Android smoke test as verified"
 ```
+
+---
+
+## Phase 2: Google Play Internal Testing
+
+**Goal:** Publish Halfsies to the Google Play Store on the Internal Testing track so up to 100 specific people can install it directly from the Play Store.
+
+**Prerequisites:**
+- Phase 1 complete (APK sideloading working)
+- Android Studio installed
+- $25 Google Play Developer account (one-time, pay at https://play.google.com/console)
+- The existing `public/favicon.svg` is used as the icon source — keep it as-is
+
+---
+
+### Task 6: Generate the release signing keystore
+
+**Files:**
+- Create: `android/keystore/halfsies-release.jks` (not committed — add to .gitignore)
+- Modify: `.gitignore`
+- Create: `android/keystore/keystore.properties` (not committed — add to .gitignore)
+
+- [ ] **Step 1: Add keystore files to .gitignore**
+
+Add to `.gitignore`:
+```
+# Release signing — never commit these
+android/keystore/
+```
+
+- [ ] **Step 2: Create the keystore directory**
+
+```bash
+mkdir android/keystore
+```
+
+- [ ] **Step 3: Generate the release keystore**
+
+Run in the repo root (fill in your own values for the prompts):
+```bash
+keytool -genkey -v -keystore android/keystore/halfsies-release.jks -alias halfsies -keyalg RSA -keysize 2048 -validity 10000
+```
+
+When prompted:
+- **Keystore password:** choose a strong password, save it somewhere safe
+- **Key password:** can be the same as keystore password
+- **First and last name, org, city, country:** can be your real name and location
+
+Expected: `android/keystore/halfsies-release.jks` created.
+
+- [ ] **Step 4: Write keystore.properties**
+
+Create `android/keystore/keystore.properties` with your actual values:
+```
+storeFile=../keystore/halfsies-release.jks
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyAlias=halfsies
+keyPassword=YOUR_KEY_PASSWORD
+```
+
+- [ ] **Step 5: Wire signing into the Android Gradle build**
+
+Edit `android/app/build.gradle`. Find the `android { ... }` block and add a `signingConfigs` block, then reference it in `buildTypes`:
+
+```groovy
+def keystorePropertiesFile = rootProject.file("keystore/keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    // ... existing config ...
+
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+```
+
+- [ ] **Step 6: Commit the Gradle change (not the keystore)**
+
+```bash
+git add android/app/build.gradle .gitignore
+git commit -m "feat: wire release signing config into Android Gradle build"
+```
+
+---
+
+### Task 7: Generate Android icon assets from the existing SVG
+
+**Files:**
+- Modify: `android/app/src/main/res/` — replace default Capacitor icons with Halfsies branding
+
+The existing icon is `public/favicon.svg` — a purple lightning-bolt shape. Android requires PNG icons at multiple densities plus a 512×512 PNG for the Play Store listing.
+
+- [ ] **Step 1: Install sharp (one-time, for icon generation)**
+
+```bash
+npm install --save-dev sharp
+```
+
+- [ ] **Step 2: Write the icon generation script**
+
+Create `scripts/generate-android-icons.mjs`:
+
+```js
+import sharp from 'sharp'
+import { readFileSync, mkdirSync } from 'fs'
+import { join } from 'path'
+
+const svg = readFileSync('public/favicon.svg')
+
+const sizes = [
+  { dir: 'mipmap-mdpi',    size: 48  },
+  { dir: 'mipmap-hdpi',    size: 72  },
+  { dir: 'mipmap-xhdpi',   size: 96  },
+  { dir: 'mipmap-xxhdpi',  size: 144 },
+  { dir: 'mipmap-xxxhdpi', size: 192 },
+]
+
+const resDir = 'android/app/src/main/res'
+
+for (const { dir, size } of sizes) {
+  const outDir = join(resDir, dir)
+  mkdirSync(outDir, { recursive: true })
+  await sharp(svg)
+    .resize(size, size)
+    .png()
+    .toFile(join(outDir, 'ic_launcher.png'))
+  await sharp(svg)
+    .resize(size, size)
+    .png()
+    .toFile(join(outDir, 'ic_launcher_round.png'))
+  console.log(`✔ ${dir}/ic_launcher.png (${size}×${size})`)
+}
+
+// Play Store listing icon (512×512)
+await sharp(svg).resize(512, 512).png().toFile('android/playstore-icon.png')
+console.log('✔ android/playstore-icon.png (512×512) — upload this to Play Console')
+```
+
+- [ ] **Step 3: Run the script**
+
+```bash
+node scripts/generate-android-icons.mjs
+```
+
+Expected: icon PNGs written to each `mipmap-*` directory, plus `android/playstore-icon.png`.
+
+- [ ] **Step 4: Commit the generated icons**
+
+```bash
+git add android/app/src/main/res/ android/playstore-icon.png scripts/generate-android-icons.mjs
+git commit -m "feat: generate Android icon assets from favicon SVG"
+```
+
+---
+
+### Task 8: Build the release AAB and publish to Internal Testing
+
+**Files:**
+- No source changes — this task produces the AAB and sets up Play Console.
+
+- [ ] **Step 1: Create your Google Play Developer account**
+
+Go to https://play.google.com/console → sign in with your Google account → pay the $25 one-time registration fee → complete identity verification.
+
+- [ ] **Step 2: Create the app in Play Console**
+
+In Play Console: **All apps → Create app** → fill in:
+- App name: `Halfsies`
+- Default language: `English (United States)`
+- App or game: `App`
+- Free or paid: `Free`
+
+Accept the declarations and click **Create app**.
+
+- [ ] **Step 3: Complete the minimum required store listing**
+
+Play Console requires a short description, full description, and at least 2 screenshots even for Internal Testing.
+
+Under **Store presence → Main store listing:**
+- Short description (80 chars max): `Split restaurant receipts fast with friends`
+- Full description (4000 chars max): a few sentences about the app
+- Icon: upload `android/playstore-icon.png`
+- Screenshots: take 2 screenshots from the sideloaded APK on your device and upload them
+
+- [ ] **Step 4: Build the release AAB in Android Studio**
+
+In Android Studio: **Build → Generate Signed Bundle / APK** → select **Android App Bundle** → select the `halfsies` keystore alias → build the **release** variant.
+
+AAB is output to: `android/app/build/outputs/bundle/release/app-release.aab`
+
+- [ ] **Step 5: Upload the AAB to Internal Testing**
+
+In Play Console: **Testing → Internal testing → Create new release** → upload `app-release.aab` → click **Save and publish**.
+
+Expected: release goes live within minutes (Internal Testing skips the review queue).
+
+- [ ] **Step 6: Add testers**
+
+In Play Console: **Testing → Internal testing → Testers tab** → create a testers list → add Google account emails (up to 100) → save.
+
+Share the opt-in URL shown on that page with your testers. They open it, tap **Become a tester**, then find and install Halfsies from the Play Store normally.
+
+- [ ] **Step 7: Verify installation from Play Store**
+
+On a tester device: open the opt-in URL → tap **Become a tester** → open Play Store → search Halfsies or use the direct link → tap Install.
+
+Expected: app installs and works identically to the sideloaded APK.
