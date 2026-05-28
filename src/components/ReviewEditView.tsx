@@ -137,18 +137,7 @@ export function ReviewEditView() {
           <input className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main opacity-70" readOnly value={formatMoney(ticket.subtotal)} />
         </label>
         <div className="space-y-1 text-sm font-medium text-text-muted">
-          <div className="flex items-center justify-between">
-            <span>Tax</span>
-            <button
-              aria-label="Add another tax line"
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-emerald-500 hover:bg-emerald-500/10"
-              onClick={() => { setShowTaxAdder((v) => !v); setTaxAddend('') }}
-              type="button"
-            >
-              <Plus size={12} />
-              Add tax
-            </button>
-          </div>
+          <span>Tax</span>
           <input
             className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none"
             min="0"
@@ -157,6 +146,17 @@ export function ReviewEditView() {
             type="number"
             value={ticket.tax}
           />
+          {!showTaxAdder && (
+            <button
+              aria-label="Add another tax line"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-emerald-500 hover:bg-emerald-500/10"
+              onClick={() => { setShowTaxAdder(true); setTaxAddend('') }}
+              type="button"
+            >
+              <Plus size={12} />
+              Add tax
+            </button>
+          )}
           {showTaxAdder && (
             <div className="flex gap-2">
               <input
