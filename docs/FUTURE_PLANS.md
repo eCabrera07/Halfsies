@@ -81,6 +81,7 @@ Support different receipt layouts through parser strategies:
 - Counter-service receipts with modifiers, combos, and discounts.
 - Receipts with quantity prefixes such as `2 Tacos 18.00`.
 - Receipts with quantity suffixes such as `Tacos x2 18.00`.
+- Receipts that print only the line total (no unit price column): `11 Waters 11.00` means qty=11, unit=$1.00, total=$11.00 — but a naive parser reads the trailing number as the unit price and sets unit=$11.00, total=$121.00. When a quantity prefix is detected, infer unit price as total ÷ qty and validate that qty × inferred-unit rounds to the observed total before committing.
 - Receipts with separate modifier lines indented below a parent item.
 - Receipts with service charges, automatic gratuity, delivery fees, and discounts.
 - Receipts with multiple tax lines or local tax labels.
