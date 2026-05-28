@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Halfsies</string>
+    <string name="title_activity_main">Halfsies</string>
+    <string name="package_name">com.halfsies.app</string>
+    <string name="custom_url_scheme">com.halfsies.app</string>
+</resources>
