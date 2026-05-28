@@ -1,6 +1,7 @@
 import { ArrowRight, Plus, Trash2, RotateCcw } from 'lucide-react'
+import { useState } from 'react'
 import { useTicketStore } from '../store/useTicketStore'
-import { formatMoney } from '../utils/splitCalculator'
+import { formatMoney, roundCurrency } from '../utils/splitCalculator'
 
 export function ReviewEditView() {
   const ticket = useTicketStore((state) => state.ticket)
@@ -11,6 +12,17 @@ export function ReviewEditView() {
   const resetTicket = useTicketStore((state) => state.resetTicket)
   const updateCharges = useTicketStore((state) => state.updateCharges)
   const updateItem = useTicketStore((state) => state.updateItem)
+
+  const [showTaxAdder, setShowTaxAdder] = useState(false)
+  const [taxAddend, setTaxAddend] = useState('')
+
+  function applyTaxAddend() {
+    const amount = Number(taxAddend)
+    if (!Number.isFinite(amount) || amount <= 0) return
+    updateCharges({ tax: roundCurrency(ticket.tax + amount) })
+    setTaxAddend('')
+    setShowTaxAdder(false)
+  }
 
   return (
     <section className="space-y-5">
@@ -124,10 +136,52 @@ export function ReviewEditView() {
           <span>Subtotal</span>
           <input className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main opacity-70" readOnly value={formatMoney(ticket.subtotal)} />
         </label>
-        <label className="space-y-1 text-sm font-medium text-text-muted">
-          <span>Tax</span>
-          <input className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none" min="0" onChange={(event) => updateCharges({ tax: Number(event.target.value) })} step="0.01" type="number" value={ticket.tax} />
-        </label>
+        <div className="space-y-1 text-sm font-medium text-text-muted">
+          <div className="flex items-center justify-between">
+            <span>Tax</span>
+            <button
+              aria-label="Add another tax line"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-emerald-500 hover:bg-emerald-500/10"
+              onClick={() => { setShowTaxAdder((v) => !v); setTaxAddend('') }}
+              type="button"
+            >
+              <Plus size={12} />
+              Add tax
+            </button>
+          </div>
+          <input
+            className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none"
+            min="0"
+            onChange={(event) => updateCharges({ tax: Number(event.target.value) })}
+            step="0.01"
+            type="number"
+            value={ticket.tax}
+          />
+          {showTaxAdder && (
+            <div className="flex gap-2">
+              <input
+                aria-label="Additional tax amount"
+                autoFocus
+                className="w-full rounded-md border border-emerald-500 bg-surface px-3 py-2 text-text-main focus:outline-none"
+                min="0"
+                onChange={(event) => setTaxAddend(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter') applyTaxAddend() }}
+                placeholder="e.g. 1.86"
+                step="0.01"
+                type="number"
+                value={taxAddend}
+              />
+              <button
+                className="shrink-0 rounded-md bg-emerald-600 px-3 py-2 font-semibold text-white hover:bg-emerald-500 disabled:opacity-40"
+                disabled={!taxAddend || Number(taxAddend) <= 0}
+                onClick={applyTaxAddend}
+                type="button"
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
         <label className="space-y-1 text-sm font-medium text-text-muted">
           <span>Tip</span>
           <input className="w-full rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none" min="0" onChange={(event) => updateCharges({ tip: Number(event.target.value) })} step="0.01" type="number" value={ticket.tip} />
