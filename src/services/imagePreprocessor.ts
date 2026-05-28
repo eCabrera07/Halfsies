@@ -19,9 +19,13 @@ interface EnhanceOptions {
   threshold: number
 }
 
+interface AdaptiveThresholdOptions {
+  blockSize?: number
+  C?: number
+}
+
 interface BrowserReceiptImagePreprocessorOptions {
   maxLongEdge?: number
-  threshold?: number
 }
 
 export interface ImagePreprocessor {
@@ -81,13 +85,75 @@ export function enhanceReceiptPixels(pixels: Uint8ClampedArray, options: Enhance
   return enhanced
 }
 
+export function adaptiveThresholdPixels(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  options: AdaptiveThresholdOptions = {},
+): Uint8ClampedArray {
+  const blockSize = options.blockSize ?? 31
+  const C = options.C ?? 10
+  const halfBlock = Math.floor(blockSize / 2)
+
+  // Compute luminance for each pixel
+  const luminance = new Float64Array(width * height)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4
+      luminance[y * width + x] =
+        0.299 * (pixels[idx] ?? 0) +
+        0.587 * (pixels[idx + 1] ?? 0) +
+        0.114 * (pixels[idx + 2] ?? 0)
+    }
+  }
+
+  // Build summed area table (integral image) for O(1) neighborhood sums
+  const integral = new Float64Array(width * height)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const lum = luminance[y * width + x] ?? 0
+      const above = y > 0 ? (integral[(y - 1) * width + x] ?? 0) : 0
+      const left = x > 0 ? (integral[y * width + (x - 1)] ?? 0) : 0
+      const aboveLeft = y > 0 && x > 0 ? (integral[(y - 1) * width + (x - 1)] ?? 0) : 0
+      integral[y * width + x] = lum + above + left - aboveLeft
+    }
+  }
+
+  // Apply per-pixel adaptive threshold using integral image
+  const result = new Uint8ClampedArray(pixels)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const x1 = Math.max(0, x - halfBlock)
+      const y1 = Math.max(0, y - halfBlock)
+      const x2 = Math.min(width - 1, x + halfBlock)
+      const y2 = Math.min(height - 1, y + halfBlock)
+
+      const count = (x2 - x1 + 1) * (y2 - y1 + 1)
+      const br = integral[y2 * width + x2] ?? 0
+      const bl = x1 > 0 ? (integral[y2 * width + (x1 - 1)] ?? 0) : 0
+      const tr = y1 > 0 ? (integral[(y1 - 1) * width + x2] ?? 0) : 0
+      const tl = x1 > 0 && y1 > 0 ? (integral[(y1 - 1) * width + (x1 - 1)] ?? 0) : 0
+      const mean = (br - bl - tr + tl) / count
+
+      const lum = luminance[y * width + x] ?? 0
+      const value = lum < mean - C ? 0 : 255
+
+      const idx = (y * width + x) * 4
+      result[idx] = value
+      result[idx + 1] = value
+      result[idx + 2] = value
+      // alpha at idx+3 preserved from copied array
+    }
+  }
+
+  return result
+}
+
 export class BrowserReceiptImagePreprocessor implements ImagePreprocessor {
   private readonly maxLongEdge: number
-  private readonly threshold: number
 
   constructor(options: BrowserReceiptImagePreprocessorOptions = {}) {
     this.maxLongEdge = options.maxLongEdge ?? 1800
-    this.threshold = options.threshold ?? 172
   }
 
   async prepareReceiptImage(image: File | Blob | string): Promise<PreparedReceiptImage> {
@@ -122,7 +188,7 @@ export class BrowserReceiptImagePreprocessor implements ImagePreprocessor {
     context.drawImage(source.image, 0, 0, dimensions.width, dimensions.height)
 
     const imageData = context.getImageData(0, 0, dimensions.width, dimensions.height)
-    const enhancedPixels = enhanceReceiptPixels(imageData.data, { threshold: this.threshold })
+    const enhancedPixels = adaptiveThresholdPixels(imageData.data, dimensions.width, dimensions.height)
     imageData.data.set(enhancedPixels)
     context.putImageData(imageData, 0, 0)
     releaseImageSource(source)
@@ -131,8 +197,7 @@ export class BrowserReceiptImagePreprocessor implements ImagePreprocessor {
       image: await canvasToPngBlob(canvas),
       operations: [
         `resize:${source.width}x${source.height}->${dimensions.width}x${dimensions.height}`,
-        'grayscale',
-        `threshold:${this.threshold}`,
+        'adaptive-threshold:31:10',
       ],
     }
   }
