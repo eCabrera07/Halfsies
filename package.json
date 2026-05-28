@@ -12,8 +12,6 @@
     "build:android": "npm run build && npx cap sync"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.4",
-    "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "lucide-react": "^1.16.0",
     "lz-string": "^1.5.0",
@@ -23,6 +21,8 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
