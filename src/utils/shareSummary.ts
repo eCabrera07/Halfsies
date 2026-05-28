@@ -37,14 +37,13 @@ export function buildShareUrl(payload: SharedSummaryPayload, origin = window.loc
   return `${origin}?summary=${encoded}`
 }
 
-export function buildMarkdownBreakdown(split: SplitResult, url: string): string {
+export function buildMarkdownBreakdown(split: SplitResult): string {
   const lines = [
     'Halfsies breakdown',
     '',
     ...split.participants.map((participant) => `- ${participant.participantName}: ${formatMoney(participant.total)}`),
     '',
     `Grand total: ${formatMoney(split.grandTotal)}`,
-    url,
   ]
 
   return lines.join('\n')

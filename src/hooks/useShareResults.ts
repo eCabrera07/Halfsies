@@ -8,7 +8,7 @@ export function useShareResults(ticket: Ticket) {
   const split = useMemo(() => calculateSplit(ticket), [ticket])
   const payload = useMemo(() => createSharePayload(split), [split])
   const shareUrl = useMemo(() => buildShareUrl(payload), [payload])
-  const shareText = useMemo(() => buildMarkdownBreakdown(split, shareUrl), [split, shareUrl])
+  const shareText = useMemo(() => buildMarkdownBreakdown(split), [split])
 
   async function shareResults() {
     try {
@@ -16,7 +16,6 @@ export function useShareResults(ticket: Ticket) {
         await navigator.share({
           title: 'Halfsies breakdown',
           text: shareText,
-          url: shareUrl,
         })
         setShareStatus('shared')
         return
