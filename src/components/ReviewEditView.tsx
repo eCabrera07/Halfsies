@@ -90,11 +90,11 @@ export function ReviewEditView() {
                 <td className="px-3 py-3">
                   <input
                     className="w-20 rounded-md border border-border-muted bg-surface px-3 py-2 text-text-main focus:border-emerald-500 focus:outline-none"
-                    min="0.01"
-                    onChange={(event) => updateItem(item.id, { quantity: Number(event.target.value) })}
+                    min="1"
+                    onChange={(event) => updateItem(item.id, { quantity: Math.max(1, Math.round(Number(event.target.value))) })}
                     step="1"
                     type="number"
-                    value={item.quantity}
+                    value={Math.round(item.quantity)}
                   />
                 </td>
                 <td className="px-3 py-3">
