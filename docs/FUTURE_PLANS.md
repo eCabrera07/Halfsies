@@ -1,33 +1,22 @@
 # Halfsies Future Plans
 
-This document tracks the next product pass after the first local-only web scaffold. The goal is to turn Halfsies into a collaborative receipt session where guests can open a shared link, sign in with Gmail, and assign their own items.
+Tracks what remains to be built. Completed work has been removed.
 
-## Product Goals
+---
 
-- Hosts can create a receipt session from a captured receipt photo.
-- Hosts can send a link to guests through native share, SMS, chat, or email.
-- Guests can sign in with Google and assign themselves to receipt items.
-- Item claims update for everyone in the session.
-- Tax and tip remain distributed proportionally based on each participant's assigned food subtotal.
-- The web app supports light and dark themes.
-- Receipt capture works well on mobile web without forcing desktop webcam flows.
-- Computer vision improves OCR reliability across common receipt formats.
+## Collaborative Sessions (Backend Required)
 
-## Phase 2 Architecture
-
-### Collaborative Sessions
+The current flow is host-assigns-everything, shared via plain text. True collaborative splitting needs a backend.
 
 - Add a backend persistence layer for tickets, participants, item assignments, and session invite links.
-- Use a short public session id in shared URLs, with sensitive state stored server-side instead of fully encoded in the query string.
-- Keep `src/types` as the shared contract between frontend, backend, and future mobile clients.
-- Add optimistic assignment updates in the client so item toggles feel immediate.
-- Add conflict handling for two guests claiming the same item at the same time.
+- Use a short public session id in shared URLs with sensitive state stored server-side.
+- Add optimistic assignment updates so item toggles feel immediate.
+- Add conflict handling for two guests claiming the same item simultaneously.
 
 Recommended stack:
-
-- Database: Supabase Postgres or Firebase Firestore for quick hosted realtime collaboration.
-- Auth: Google OAuth through Supabase Auth, Firebase Auth, or NextAuth if the project moves to Next.js.
-- Realtime: Supabase Realtime channels, Firestore listeners, or WebSockets.
+- Database: Supabase Postgres or Firebase Firestore (quick hosted realtime)
+- Auth: Google OAuth through Supabase Auth, Firebase Auth, or NextAuth
+- Realtime: Supabase Realtime channels or Firestore listeners
 
 ### Google Sign-In
 
@@ -35,86 +24,60 @@ Recommended stack:
 - Store participants by authenticated user id plus display name and email.
 - Allow the host to add placeholder participants for people who do not join immediately.
 - When a guest joins from a link, match them to an existing placeholder by email when possible.
-- Keep payment status editable by the host and visible to guests.
 
 ### Self Assignment Flow
 
-- Shared links should open a session landing state.
+- Shared links open a session landing state.
 - Signed-in guests see receipt items and can toggle themselves on or off each item.
 - Hosts retain edit permission for receipt data, tax, tip, participants, and all assignments.
 - Guests can only assign or unassign themselves unless future permissions expand.
-- Summary should update live as guests claim items.
+- Summary updates live as guests claim items.
+- Replace query-encoded sharing with durable session links.
 
-### Dark Mode
+---
 
-- Add a theme store with `light`, `dark`, and `system` modes.
-- Persist the selected theme in local storage.
-- Use Tailwind dark variants and CSS custom properties for surfaces, text, borders, and semantic accents.
-- Add a compact icon toggle in the app header.
-- Test all workflow screens for contrast and readability in both themes.
+## Computer Vision — Advanced Preprocessing
 
-### Receipt Image Capture
+Basic preprocessing is done (resize + adaptive threshold). What remains:
 
-- Keep mobile capture based on `<input type="file" accept="image/*" capture="environment">`.
-- Avoid using desktop webcam streams as the primary receipt capture flow.
-- Add browser capability checks and copy that adapts between mobile capture and desktop upload.
+- Detect receipt corners and perspective-correct (deskew) before OCR — critical for photos taken at an angle.
+- Crop to the receipt boundary to reduce noise from table surfaces, hands, etc.
 - Add image preview tools before OCR: rotate, crop, retake, and confirm.
-- Test on iOS Safari, Android Chrome, desktop Chrome, and desktop Edge.
 
-### Computer Vision and OCR
+---
 
-- Add a preprocessing pipeline before text extraction:
-  - Detect receipt corners.
-  - Deskew and perspective-correct the receipt.
-  - Improve contrast and remove shadows when possible.
-  - Crop to the receipt boundary.
-- Add OCR provider abstraction behind the existing `OcrService` interface.
-- Start with a hosted OCR provider for accuracy, then evaluate local/on-device fallback later.
-- Store raw OCR text and parsed line confidence for host review.
-- Keep parsing deterministic and testable after OCR text is returned.
+## OCR — Hosted Provider
 
-### Receipt Type Considerations
+Tesseract.js (on-device WASM) is the current provider. For better accuracy:
 
-Support different receipt layouts through parser strategies:
+- Add a cloud OCR provider implementation behind the existing `OcrService` interface (Google Vision, AWS Textract, or Azure Read).
+- Evaluate accuracy vs. cost tradeoff — Tesseract struggles with abbreviations, non-standard fonts, and poor lighting even after preprocessing.
+- Keep Tesseract as the offline fallback.
 
-- Restaurant itemized receipts with subtotal, tax, tip, and total.
-- Counter-service receipts with modifiers, combos, and discounts.
-- Receipts with quantity prefixes such as `2 Tacos 18.00`.
-- Receipts with quantity suffixes such as `Tacos x2 18.00`.
-- Receipts that print only the line total (no unit price column): `11 Waters 11.00` means qty=11, unit=$1.00, total=$11.00 — but a naive parser reads the trailing number as the unit price and sets unit=$11.00, total=$121.00. When a quantity prefix is detected, infer unit price as total ÷ qty and validate that qty × inferred-unit rounds to the observed total before committing.
-- Receipts with separate modifier lines indented below a parent item.
-- Receipts with service charges, automatic gratuity, delivery fees, and discounts.
-- Receipts with multiple tax lines or local tax labels.
-- Receipts where item totals are ambiguous or missing.
+---
 
-The host review screen remains mandatory because OCR and receipt parsing will never be perfect across every restaurant.
+## Receipt Parsing — Remaining Edge Cases
 
-## Implementation Plan
+The parser handles qty-prefix/suffix, SKU look-ahead, subtotal/tax/tip/total classification, and reconciliation warnings. Outstanding cases:
 
-1. Add a backend session model and persistence adapter.
-2. Add Google OAuth and authenticated participant joining.
-3. Replace query-only sharing with durable session links.
-4. Add realtime item assignment updates.
-5. Add role-based permissions for host and guest actions.
-6. Add dark mode tokens, theme store, and theme toggle.
-7. Add mobile receipt capture QA and desktop upload fallback.
-8. Add receipt image preprocessing before OCR.
-9. Add OCR provider implementations behind `OcrService`.
-10. Add parser strategy tests for multiple receipt formats.
+- **Modifier lines:** Items with indented modifier lines (e.g., `+ No onions -0.00`, `+ Add guac 2.50`) — currently parsed as separate items instead of being attached to their parent.
+- **Discounts:** Negative-amount lines (e.g., `Loyalty discount -1.50`) should reduce subtotal, not become items.
+- **Service charges / auto-gratuity:** Lines like `Auto-grat 18% 4.32` should map to tip, not a food item.
+- **Delivery / packaging fees:** Should be a separate charge category, not a food item.
+- **Qty-only-total receipts with ambiguous prefix:** `11 Waters 11.00` — qty=11, total=$11.00, inferred unit=$1.00. Parser already infers unit correctly via `totalPrice / qty`, but validate round-trip (`qty × unit ≈ total`) before committing to avoid false qty matches.
 
-## Testing Plan
+---
 
-- Unit test proportional split math for shared items, unassigned items, service charges, discounts, and zero-subtotal edge cases.
-- Unit test receipt parsing fixtures for every supported receipt type.
-- Integration test session creation, guest joining, item claiming, and live summary updates.
-- E2E test host and guest flows in separate browser contexts.
-- Manual QA receipt capture on real mobile browsers.
-- Accessibility test light and dark modes for keyboard flow and contrast.
+## Android
+
+- **Phase 2 — Native Kotlin / Jetpack Compose** (separate repo, not started): Full native rewrite with ML Kit on-device OCR. Start when user is ready.
+- **Phase 3 — Google Play Internal Testing** (after Phase 2): Publish to Internal Testing track (up to 100 testers by email, $25 one-time fee). Plan is in `docs/superpowers/plans/2026-05-27-android-capacitor.md` under Phase 3.
+
+---
 
 ## Open Decisions
 
-- Choose Supabase, Firebase, or a custom API backend.
-- Choose the first OCR provider and expected monthly cost.
+- Choose Supabase, Firebase, or a custom API backend for collaborative sessions.
+- Choose the first cloud OCR provider and acceptable monthly cost.
 - Decide whether shared sessions are public-with-secret-link or require every guest to sign in before viewing.
-- Decide whether guests can edit their display names after joining.
-- Decide whether payment collection links are in scope for the next pass.
+- Decide whether payment collection links (Venmo/Cash App deep links) are in scope.
