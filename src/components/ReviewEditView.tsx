@@ -119,7 +119,16 @@ export function ReviewEditView() {
                     value={item.pricePerUnit}
                   />
                 </td>
-                <td className="px-3 py-3 font-semibold text-text-main">{formatMoney(item.totalPrice)}</td>
+                <td className="px-3 py-3">
+                  <input
+                    className="w-28 rounded-md border border-border-muted bg-surface px-3 py-2 font-semibold text-text-main focus:border-emerald-500 focus:outline-none"
+                    min="0"
+                    onChange={(event) => updateItem(item.id, { pricePerUnit: roundCurrency(Number(event.target.value) / item.quantity) })}
+                    step="0.01"
+                    type="number"
+                    value={item.totalPrice}
+                  />
+                </td>
                 <td className="px-3 py-3 text-right">
                   <button className="rounded-lg p-2 text-text-muted hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-900/20 dark:hover:text-rose-400" onClick={() => removeItem(item.id)} title="Remove item" type="button">
                     <Trash2 aria-hidden="true" className="h-4 w-4" />
